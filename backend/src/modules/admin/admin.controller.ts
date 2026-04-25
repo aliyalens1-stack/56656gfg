@@ -682,4 +682,130 @@ export class AdminController {
   ) {
     return this.adminService.executePlaybookStep(id, stepOrder);
   }
+
+  // ═════════════════════════════════════════════════════════════════
+  // 🔥 SPRINT 14 — ADMIN DETAIL LAYER
+  // ═════════════════════════════════════════════════════════════════
+
+  // Users — detail
+  @Get('users/:id')
+  @ApiOperation({ summary: 'Get user detail' })
+  getUserById(@Param('id') id: string) {
+    return this.adminService.getUserById(id);
+  }
+
+  @Get('users/:id/activity')
+  @ApiOperation({ summary: 'Get user activity log' })
+  getUserActivity(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getUserActivity(id, limit ? parseInt(limit) : 50);
+  }
+
+  @Get('users/:id/notes')
+  @ApiOperation({ summary: 'Get user moderation notes' })
+  getUserNotes(@Param('id') id: string) {
+    return this.adminService.getUserNotes(id);
+  }
+
+  // Bookings — detail
+  @Get('bookings/:id')
+  @ApiOperation({ summary: 'Get booking detail' })
+  getBookingById(@Param('id') id: string) {
+    return this.adminService.getBookingById(id);
+  }
+
+  @Get('bookings/:id/timeline')
+  @ApiOperation({ summary: 'Get booking timeline' })
+  getBookingTimeline(@Param('id') id: string) {
+    return this.adminService.getBookingTimeline(id);
+  }
+
+  // Quotes — detail / responses
+  @Get('quotes/:id')
+  @ApiOperation({ summary: 'Get quote detail' })
+  getQuoteById(@Param('id') id: string) {
+    return this.adminService.getQuoteById(id);
+  }
+
+  @Get('quotes/:id/responses')
+  @ApiOperation({ summary: 'Get quote responses (provider proposals)' })
+  getQuoteResponses(@Param('id') id: string) {
+    return this.adminService.getQuoteResponses(id);
+  }
+
+  // Disputes — detail / timeline / evidence
+  @Get('disputes/:id')
+  @ApiOperation({ summary: 'Get dispute detail' })
+  getDisputeById(@Param('id') id: string) {
+    return this.adminService.getDisputeById(id);
+  }
+
+  @Get('disputes/:id/timeline')
+  @ApiOperation({ summary: 'Get dispute timeline' })
+  getDisputeTimeline(@Param('id') id: string) {
+    return this.adminService.getDisputeTimeline(id);
+  }
+
+  @Get('disputes/:id/evidence')
+  @ApiOperation({ summary: 'Get dispute evidence' })
+  getDisputeEvidence(@Param('id') id: string) {
+    return this.adminService.getDisputeEvidence(id);
+  }
+
+  // Payments — detail / timeline
+  @Get('payments/:id')
+  @ApiOperation({ summary: 'Get payment detail' })
+  getPaymentById(@Param('id') id: string) {
+    return this.adminService.getPaymentById(id);
+  }
+
+  @Get('payments/:id/timeline')
+  @ApiOperation({ summary: 'Get payment timeline' })
+  getPaymentTimeline(@Param('id') id: string) {
+    return this.adminService.getPaymentTimeline(id);
+  }
+
+  // Reviews — detail
+  @Get('reviews/:id')
+  @ApiOperation({ summary: 'Get review detail' })
+  getReviewById(@Param('id') id: string) {
+    return this.adminService.getReviewById(id);
+  }
+
+  // Organizations — performance / bookings / payouts
+  @Get('organizations/:id/performance')
+  @ApiOperation({ summary: 'Get organization performance metrics' })
+  getOrganizationPerformance(@Param('id') id: string) {
+    return this.adminService.getOrganizationPerformance(id);
+  }
+
+  @Get('organizations/:id/bookings')
+  @ApiOperation({ summary: 'Get organization bookings' })
+  getOrganizationBookings(
+    @Param('id') id: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+    @Query('skip') skip?: string,
+  ) {
+    return this.adminService.getOrganizationBookings(id, {
+      status,
+      limit: limit ? parseInt(limit) : undefined,
+      skip: skip ? parseInt(skip) : undefined,
+    });
+  }
+
+  @Get('organizations/:id/payouts')
+  @ApiOperation({ summary: 'Get organization payouts (derived from payments)' })
+  getOrganizationPayouts(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('skip') skip?: string,
+  ) {
+    return this.adminService.getOrganizationPayouts(id, {
+      limit: limit ? parseInt(limit) : undefined,
+      skip: skip ? parseInt(skip) : undefined,
+    });
+  }
 }

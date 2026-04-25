@@ -26,7 +26,7 @@ import requests
 import os
 
 # Use external URL for testing (what users see)
-BASE_URL = "https://full-stack-deploy-69.preview.emergentagent.com"
+BASE_URL = "https://mobile-web-stack-2.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_EMAIL = "admin@autoservice.com"

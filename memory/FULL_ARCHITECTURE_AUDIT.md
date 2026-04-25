@@ -22,7 +22,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
-│  Kubernetes Ingress  (https://platform-suite-1.preview.emergentagent.com)  │
+│  Kubernetes Ingress  (https://mobile-web-stack-2.preview.emergentagent.com)  │
 └────────────────────────────────────────────────────────────────────────────┘
    │                                                              │
    │  /                                                           │  /api/*

@@ -2679,4 +2679,235 @@ export class AdminService {
     return 'NEUTRAL: Умеренное влияние. Можно тестировать на ограниченной зоне';
   }
 
+  // ═════════════════════════════════════════════════════════════════
+  // 🔥 SPRINT 14 — ADMIN DETAIL LAYER (drill-down endpoints)
+  // ═════════════════════════════════════════════════════════════════
+
+  private _isObjectId(id: string): boolean {
+    return Types.ObjectId.isValid(id) && /^[a-f0-9]{24}$/i.test(id);
+  }
+
+  /** USERS — detail / activity / notes */
+  async getUserById(userId: string) {
+    if (!this._isObjectId(userId)) throw new NotFoundException('User not found');
+    const user = await this.userModel.findById(userId).select('-passwordHash').lean();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async getUserActivity(userId: string, limit = 50) {
+    if (!this._isObjectId(userId)) throw new NotFoundException('User not found');
+    const userIdStr = String(userId);
+    const [bookings, quotes, reviews, payments] = await Promise.all([
+      this.bookingModel.find({ userId: userIdStr }).sort({ createdAt: -1 }).limit(limit).lean(),
+      this.quoteModel.find({ userId: userIdStr }).sort({ createdAt: -1 }).limit(limit).lean(),
+      this.reviewModel.find({ userId: userIdStr }).sort({ createdAt: -1 }).limit(limit).lean(),
+      this.paymentModel.find({ userId: userIdStr }).sort({ createdAt: -1 }).limit(limit).lean(),
+    ]);
+    const events: any[] = [];
+    bookings.forEach((b: any) => events.push({ type: 'booking', id: b._id, status: b.status, ts: b.createdAt, ref: b.bookingNumber }));
+    quotes.forEach((q: any) => events.push({ type: 'quote', id: q._id, status: q.status, ts: q.createdAt }));
+    reviews.forEach((r: any) => events.push({ type: 'review', id: r._id, rating: r.rating, ts: r.createdAt }));
+    payments.forEach((p: any) => events.push({ type: 'payment', id: p._id, amount: p.amount, status: p.status, ts: p.createdAt }));
+    events.sort((a, b) => (b.ts > a.ts ? 1 : -1));
+    return {
+      userId,
+      counts: { bookings: bookings.length, quotes: quotes.length, reviews: reviews.length, payments: payments.length },
+      events: events.slice(0, limit),
+    };
+  }
+
+  async getUserNotes(userId: string) {
+    if (!this._isObjectId(userId)) throw new NotFoundException('User not found');
+    const user = await this.userModel.findById(userId).select('notes').lean() as any;
+    if (!user) throw new NotFoundException('User not found');
+    return { userId, notes: user?.notes || [] };
+  }
+
+  /** BOOKINGS — detail / timeline */
+  async getBookingById(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Booking not found');
+    const booking = await this.bookingModel.findById(id).lean();
+    if (!booking) throw new NotFoundException('Booking not found');
+    return booking;
+  }
+
+  async getBookingTimeline(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Booking not found');
+    const booking = await this.bookingModel.findById(id).lean() as any;
+    if (!booking) throw new NotFoundException('Booking not found');
+    const events: any[] = [];
+    if (booking.createdAt) events.push({ type: 'created', ts: booking.createdAt, status: 'pending' });
+    (booking.statusHistory || []).forEach((h: any) =>
+      events.push({ type: 'status_change', ts: h.changedAt || h.ts, status: h.status, by: h.by }),
+    );
+    if (booking.confirmedAt) events.push({ type: 'confirmed', ts: booking.confirmedAt });
+    if (booking.startedAt) events.push({ type: 'started', ts: booking.startedAt });
+    if (booking.completedAt) events.push({ type: 'completed', ts: booking.completedAt });
+    if (booking.cancelledAt) events.push({ type: 'cancelled', ts: booking.cancelledAt, reason: booking.cancellationReason });
+    events.sort((a, b) => (a.ts > b.ts ? 1 : -1));
+    return { bookingId: id, bookingNumber: booking.bookingNumber, currentStatus: booking.status, events };
+  }
+
+  /** QUOTES — detail / responses */
+  async getQuoteById(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Quote not found');
+    const quote = await this.quoteModel.findById(id).lean();
+    if (!quote) throw new NotFoundException('Quote not found');
+    return quote;
+  }
+
+  async getQuoteResponses(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Quote not found');
+    const quote = await this.quoteModel.findById(id).lean() as any;
+    if (!quote) throw new NotFoundException('Quote not found');
+    return { quoteId: id, total: (quote.responses || []).length, responses: quote.responses || [] };
+  }
+
+  /** DISPUTES — detail / timeline / evidence */
+  async getDisputeById(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Dispute not found');
+    const dispute = await this.disputeModel.findById(id).lean();
+    if (!dispute) throw new NotFoundException('Dispute not found');
+    return dispute;
+  }
+
+  async getDisputeTimeline(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Dispute not found');
+    const dispute = await this.disputeModel.findById(id).lean() as any;
+    if (!dispute) throw new NotFoundException('Dispute not found');
+    const events: any[] = [];
+    if (dispute.createdAt) events.push({ type: 'opened', ts: dispute.createdAt, by: dispute.userId });
+    (dispute.messages || []).forEach((m: any) =>
+      events.push({ type: 'message', ts: m.createdAt || m.ts, from: m.from || m.role, text: m.text }),
+    );
+    (dispute.statusHistory || []).forEach((h: any) =>
+      events.push({ type: 'status_change', ts: h.ts || h.changedAt, status: h.status, by: h.by }),
+    );
+    if (dispute.resolvedAt) events.push({ type: 'resolved', ts: dispute.resolvedAt, decision: dispute.resolution?.decision });
+    events.sort((a, b) => (a.ts > b.ts ? 1 : -1));
+    return { disputeId: id, currentStatus: dispute.status, events };
+  }
+
+  async getDisputeEvidence(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Dispute not found');
+    const dispute = await this.disputeModel.findById(id).lean() as any;
+    if (!dispute) throw new NotFoundException('Dispute not found');
+    return {
+      disputeId: id,
+      customerEvidence: dispute.evidence?.customer || [],
+      providerEvidence: dispute.evidence?.provider || [],
+      attachments: dispute.attachments || [],
+      requestedFrom: dispute.evidenceRequests || [],
+    };
+  }
+
+  /** PAYMENTS — detail / timeline */
+  async getPaymentById(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Payment not found');
+    const payment = await this.paymentModel.findById(id).lean();
+    if (!payment) throw new NotFoundException('Payment not found');
+    return payment;
+  }
+
+  async getPaymentTimeline(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Payment not found');
+    const payment = await this.paymentModel.findById(id).lean() as any;
+    if (!payment) throw new NotFoundException('Payment not found');
+    const events: any[] = [];
+    if (payment.createdAt) events.push({ type: 'created', ts: payment.createdAt, amount: payment.amount });
+    (payment.statusHistory || []).forEach((h: any) =>
+      events.push({ type: 'status_change', ts: h.ts || h.changedAt, status: h.status }),
+    );
+    if (payment.confirmedAt) events.push({ type: 'confirmed', ts: payment.confirmedAt });
+    if (payment.refundedAt) events.push({ type: 'refunded', ts: payment.refundedAt, amount: payment.refundAmount });
+    if (payment.failedAt) events.push({ type: 'failed', ts: payment.failedAt, reason: payment.failureReason });
+    events.sort((a, b) => (a.ts > b.ts ? 1 : -1));
+    return { paymentId: id, currentStatus: payment.status, events };
+  }
+
+  /** REVIEWS — detail */
+  async getReviewById(id: string) {
+    if (!this._isObjectId(id)) throw new NotFoundException('Review not found');
+    const review = await this.reviewModel.findById(id).lean();
+    if (!review) throw new NotFoundException('Review not found');
+    return review;
+  }
+
+  /** ORGANIZATIONS — performance / bookings / payouts */
+  async getOrganizationPerformance(orgId: string) {
+    if (!this._isObjectId(orgId)) throw new NotFoundException('Organization not found');
+    const org = await this.organizationModel.findById(orgId).lean() as any;
+    if (!org) throw new NotFoundException('Organization not found');
+
+    const [bookingsTotal, bookingsCompleted, bookingsCancelled, reviewsAgg, paymentsAgg] = await Promise.all([
+      this.bookingModel.countDocuments({ organizationId: orgId }),
+      this.bookingModel.countDocuments({ organizationId: orgId, status: 'completed' }),
+      this.bookingModel.countDocuments({ organizationId: orgId, status: 'cancelled' }),
+      this.reviewModel.aggregate([
+        { $match: { organizationId: new Types.ObjectId(orgId) } },
+        { $group: { _id: null, count: { $sum: 1 }, avg: { $avg: '$rating' } } },
+      ]),
+      this.paymentModel.aggregate([
+        { $match: { organizationId: new Types.ObjectId(orgId) } },
+        { $group: { _id: null, count: { $sum: 1 }, total: { $sum: '$amount' }, fees: { $sum: '$platformFee' } } },
+      ]),
+    ]);
+
+    const completionRate = bookingsTotal > 0 ? Math.round((bookingsCompleted / bookingsTotal) * 100) : 0;
+    const cancelRate = bookingsTotal > 0 ? Math.round((bookingsCancelled / bookingsTotal) * 100) : 0;
+    const reviews = reviewsAgg[0] || { count: 0, avg: 0 };
+    const payments = paymentsAgg[0] || { count: 0, total: 0, fees: 0 };
+
+    return {
+      organizationId: orgId,
+      organizationName: org.name,
+      bookings: { total: bookingsTotal, completed: bookingsCompleted, cancelled: bookingsCancelled, completionRate, cancelRate },
+      reviews: { count: reviews.count, avgRating: Math.round((reviews.avg || 0) * 10) / 10 },
+      payments: { count: payments.count, totalAmount: payments.total, platformFees: payments.fees, netRevenue: (payments.total || 0) - (payments.fees || 0) },
+      rating: org.rating || reviews.avg || 0,
+    };
+  }
+
+  async getOrganizationBookings(orgId: string, options?: { limit?: number; skip?: number; status?: string }) {
+    if (!this._isObjectId(orgId)) throw new NotFoundException('Organization not found');
+    const query: any = { organizationId: orgId };
+    if (options?.status) query.status = options.status;
+    const [bookings, total] = await Promise.all([
+      this.bookingModel.find(query).sort({ createdAt: -1 }).skip(options?.skip || 0).limit(options?.limit || 50).lean(),
+      this.bookingModel.countDocuments(query),
+    ]);
+    return { organizationId: orgId, bookings, total };
+  }
+
+  async getOrganizationPayouts(orgId: string, options?: { limit?: number; skip?: number }) {
+    if (!this._isObjectId(orgId)) throw new NotFoundException('Organization not found');
+    // Payouts derived from completed payments minus platform fee (no separate Payouts collection yet — Sprint 15+).
+    const query: any = { organizationId: orgId, status: { $in: ['completed', 'confirmed', 'paid'] } };
+    const [payments, total, sumAgg] = await Promise.all([
+      this.paymentModel.find(query).sort({ createdAt: -1 }).skip(options?.skip || 0).limit(options?.limit || 50).lean(),
+      this.paymentModel.countDocuments(query),
+      this.paymentModel.aggregate([
+        { $match: { organizationId: new Types.ObjectId(orgId), status: { $in: ['completed', 'confirmed', 'paid'] } } },
+        { $group: { _id: null, gross: { $sum: '$amount' }, fees: { $sum: '$platformFee' } } },
+      ]),
+    ]);
+    const sums = sumAgg[0] || { gross: 0, fees: 0 };
+    const payouts = (payments as any[]).map((p) => ({
+      id: p._id,
+      bookingId: p.bookingId,
+      grossAmount: p.amount,
+      platformFee: p.platformFee || 0,
+      netAmount: (p.amount || 0) - (p.platformFee || 0),
+      status: p.status,
+      createdAt: p.createdAt,
+      paidAt: p.confirmedAt || p.paidAt,
+    }));
+    return {
+      organizationId: orgId,
+      payouts,
+      total,
+      summary: { grossTotal: sums.gross, feesTotal: sums.fees, netTotal: (sums.gross || 0) - (sums.fees || 0) },
+    };
+  }
 }

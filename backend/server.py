@@ -2096,9 +2096,14 @@ async def marketplace_stats():
 
 @app.post("/api/marketplace/quick-request")
 async def marketplace_quick_request(request: Request):
-    """Quick request - find best provider"""
+    """Quick request - find best provider.
+
+    Sprint 14: accepts both `problem` and `serviceType` (synonyms).
+    Mobile and web-app can now share a single contract:
+        { problem | serviceType, lat, lng, vehicleId?, urgent? }
+    """
     body = await request.json()
-    problem = body.get("problem", "diagnostics")
+    problem = body.get("problem") or body.get("serviceType") or "diagnostics"
     lat = body.get("lat", 50.4501)
     lng = body.get("lng", 30.5234)
 
@@ -6294,10 +6299,15 @@ async def compat_payments_list(request: Request):
     return await _proxy_to(request, "payments/my")
 
 
-# --- Slots reserve alias ---
-@app.post("/api/slots/reserve")
-async def compat_slots_reserve(request: Request):
-    return await _proxy_to(request, "slots/hold")
+# --- Disputes list compat: /api/disputes → NestJS /disputes/my ---
+# Sprint 14: closes G-1. Mobile/web-app contract uses /disputes; NestJS exposes /disputes/my only.
+@app.get("/api/disputes")
+async def compat_disputes_list(request: Request):
+    return await _proxy_to(request, "disputes/my")
+
+# Sprint 14: removed broken compat `slots/reserve → slots/hold` (G-2 / B-1).
+# NestJS exposes POST /api/slots/reserve directly via slots.controller.ts (@Post('slots/reserve')).
+# The catch-all proxy forwards POST /api/slots/reserve untouched.
 
 
 # --- Auth forgot-password (mock-safe) ---

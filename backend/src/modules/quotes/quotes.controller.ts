@@ -83,6 +83,10 @@ export class QuotesController {
   @Roles(UserRole.CUSTOMER)
   @Post('quick')
   quickRequest(@Req() req: any, @Body() dto: QuickRequestDto) {
+    // Sprint 14: accept both `serviceType` (canonical) and `problem` (web-app alias).
+    if (!dto.serviceType && dto.problem) {
+      dto.serviceType = dto.problem as any;
+    }
     return this.quickRequestService.createQuickRequest(req.user.sub, dto);
   }
 

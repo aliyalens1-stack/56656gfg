@@ -67,7 +67,7 @@ export const API = {
     byBooking:   (id: string) => `/reviews/by-booking/${id}`,
   },
   disputes: {
-    list:        '/disputes',
+    list:        '/disputes/my',
     create:      '/disputes',
     byId:        (id: string) => `/disputes/${id}`,
   },
@@ -101,8 +101,6 @@ export const API = {
   },
   slots: {
     reserve:     '/slots/reserve',
-    hold:        '/slots/hold',
-    available:   '/slots/available',
   },
   experiments: {
     active:      '/experiments/active',
@@ -153,8 +151,7 @@ export const API = {
     bookings:         '/admin/bookings',
     monetization:     '/admin/monetization',
     governance:       '/admin/governance/score',
-    featureFlags:     '/admin/config/features',
-    featureFlagsAlt:  '/admin/feature-flags',
+    featureFlags:     '/admin/feature-flags', // canonical (Sprint 14: featureFlagsAlt removed)
     commissionTiers:  '/admin/config/commission-tiers',
     automation:       '/admin/automation/dashboard',
     automationReplay: '/admin/automation/replay',

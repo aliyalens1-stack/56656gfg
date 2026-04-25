@@ -23,7 +23,7 @@ import os
 import time
 
 # Use external URL for testing (what users see)
-BASE_URL = "https://full-stack-deploy-69.preview.emergentagent.com"
+BASE_URL = "https://mobile-web-stack-2.preview.emergentagent.com"
 
 # Test credentials from /app/memory/test_credentials.md
 ADMIN_EMAIL = "admin@autoservice.com"

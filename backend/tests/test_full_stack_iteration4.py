@@ -16,7 +16,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://full-stack-deploy-69.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://mobile-web-stack-2.preview.emergentagent.com").rstrip("/")
 
 ADMIN = {"email": "admin@autoservice.com", "password": "Admin123!"}
 CUSTOMER = {"email": "customer@test.com", "password": "Customer123!"}
