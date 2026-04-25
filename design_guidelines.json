@@ -1,0 +1,226 @@
+{
+  "theme": {
+    "mode": "dark",
+    "colors": {
+      "background": "#000000",
+      "surface_base": "#0d0d0d",
+      "surface_elevated": "#141414",
+      "surface_input": "#1a1a1a",
+      "primary": "#FFB020",
+      "border": "#2E2E2E",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#A1A1AA",
+      "text_inverse": "#000000",
+      "success": "#22C55E",
+      "danger": "#EF4444"
+    },
+    "typography": {
+      "fonts": {
+        "display": "'Bebas Neue', sans-serif",
+        "body": "'IBM Plex Sans', sans-serif"
+      },
+      "rules": {
+        "h1": "font-display text-5xl md:text-7xl lg:text-8xl uppercase tracking-wider leading-none",
+        "h2": "font-display text-4xl md:text-5xl uppercase tracking-wide leading-tight",
+        "h3": "font-display text-2xl md:text-3xl uppercase tracking-wide",
+        "body_large": "font-body text-lg leading-relaxed text-text_secondary",
+        "body_base": "font-body text-base leading-relaxed text-text_secondary",
+        "body_small": "font-body text-sm leading-normal text-text_secondary",
+        "nav_links": "font-body text-sm font-semibold uppercase tracking-[0.15em] text-white hover:text-primary transition-colors",
+        "decorators": {
+          "bracket": "before:content-['['] after:content-[']'] before:text-primary after:text-primary before:mr-1 after:ml-1 font-mono text-sm uppercase tracking-widest",
+          "slash": "before:content-['/'] after:content-['/'] before:text-primary after:text-primary before:mr-2 after:ml-2 font-mono text-xs uppercase tracking-widest font-bold text-white",
+          "step_num": "before:content-['['] after:content-[']'] before:text-white/30 after:text-white/30 font-display text-2xl text-primary"
+        }
+      }
+    },
+    "effects": {
+      "shadows": "NONE. Use flat design only. Remove all drop-shadows and box-shadows.",
+      "radii": {
+        "card": "rounded-t-xl rounded-b-none",
+        "input": "rounded-md",
+        "button": "rounded-md",
+        "modal": "rounded-xl",
+        "pill": "rounded-full"
+      },
+      "borders": "1px solid #2E2E2E on surfaces to create depth instead of shadows."
+    }
+  },
+  "components": {
+    "header": {
+      "layout": "h-[72px] w-full flex items-center justify-between px-6 bg-background border-b border-border z-50 fixed top-0",
+      "elements": "Logo, Nav Links (uppercase tracked), VIN/Search input, Phone contacts, Lang switch, Avatar, CTA",
+      "style": "No shadow. Pure black background. Links are hover:text-primary."
+    },
+    "footer": {
+      "layout": "bg-background pt-24 pb-8 px-6 border-t border-border",
+      "elements": "Multi-column grid. Uppercase tracked heading links, stacked smaller body links.",
+      "style": "Pure black. Font Bebas for column headers, IBM Plex for lists."
+    },
+    "hero": {
+      "layout": "min-h-[85vh] relative flex flex-col justify-end pt-32 pb-12 px-6",
+      "elements": "Full-bleed dark photo bg. Huge Bebas heading. Inline slash-separated stats. Bottom row: 3 inputs (Brand/Model/Year) + Primary Button.",
+      "style": "Background has dark overlay (`bg-black/60`). The search row is anchored at the bottom, inputs have bg-[#1a1a1a] and 1px border. No shadows."
+    },
+    "stats_strip": {
+      "layout": "flex items-center gap-6 text-sm uppercase font-bold tracking-widest",
+      "style": "Text is white, separators are primary amber slashes."
+    },
+    "section_heading": {
+      "layout": "flex flex-col gap-2 mb-12",
+      "elements": "Kicker (slash), H2 (Bebas), Description (bracket, right-aligned or adjacent)",
+      "style": "Kicker: text-xs slash decorator. H2: Bebas uppercase. Description: grey body text in brackets."
+    },
+    "provider_card": {
+      "layout": "flex flex-col p-6 gap-4",
+      "style": "bg-[#111111] border border-border rounded-t-xl rounded-b-none hover:border-primary transition-colors. Flat panel. Amber hover ring. No shadow.",
+      "elements": "Header (Name + Badge), Body (Specs), Footer (Price + CTA)"
+    },
+    "filter_chip_group": {
+      "layout": "flex flex-wrap gap-2 mb-8",
+      "style": "Pill shaped (rounded-full). Default: bg-transparent border border-border text-white. Active: bg-primary border-primary text-black."
+    },
+    "input": {
+      "layout": "h-[44px] px-4 w-full",
+      "style": "bg-[#1a1a1a] border border-border rounded-md text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all."
+    },
+    "dropdown_select": {
+      "layout": "h-[44px] px-4 w-full relative appearance-none",
+      "style": "bg-[#1a1a1a] border border-border rounded-md text-white focus:border-primary. Custom chevron down icon in primary amber."
+    },
+    "button": {
+      "primary": "bg-primary text-black font-semibold rounded-md h-[44px] px-6 hover:bg-primary/90 transition-colors uppercase tracking-wider",
+      "secondary": "bg-transparent border border-border text-white font-semibold rounded-md h-[44px] px-6 hover:border-primary transition-colors uppercase tracking-wider"
+    },
+    "modal_dialog": {
+      "layout": "fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm z-50",
+      "panel": "bg-[#0d0d0d] border border-border rounded-xl w-full max-w-md p-6 no-shadow",
+      "style": "Header in Bebas Neue. Close button in top right. Inputs are #1a1a1a."
+    },
+    "tab_pill_group": {
+      "layout": "inline-flex p-1 bg-black rounded-full border border-border",
+      "tab": "px-6 py-2 rounded-full text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-black text-white"
+    },
+    "process_step": {
+      "layout": "flex flex-col gap-2 relative pl-8",
+      "style": "Step number uses bracket decorator `[1]`. Title in Bebas. Body in IBM Plex. Border-left indicator."
+    },
+    "tier_card": {
+      "layout": "flex flex-col p-8 border border-border bg-[#141414] rounded-t-xl rounded-b-none relative",
+      "style": "If popular/highlighted: border-primary with `[ popular ]` bracket label on top. No shadows."
+    },
+    "before_after_card": {
+      "layout": "grid grid-cols-2 gap-4 bg-[#111111] border border-border p-4 rounded-t-xl rounded-b-none",
+      "elements": "Two images. Date/Price strip at the bottom. Image container has max 8px radius."
+    },
+    "review_card": {
+      "layout": "flex flex-col gap-4 p-6 bg-[#111111] border border-border rounded-t-xl rounded-b-none",
+      "elements": "Top: Avatar circle + Name. Body: Text. Side: Rating badge `4.9 / 31 reviews`."
+    },
+    "faq_accordion": {
+      "layout": "border-b border-border py-4",
+      "style": "Question in Bebas with numbered prefix `1/`. Chevron toggle. Answer in IBM Plex."
+    },
+    "cta_banner": {
+      "layout": "w-full min-h-[40vh] relative flex items-center justify-center text-center p-12",
+      "style": "Full bleed image with bg-black/70 overlay. Huge Bebas text + Primary Button."
+    },
+    "toast": {
+      "layout": "bg-[#141414] border border-border text-white rounded-md p-4 flex items-center gap-3",
+      "style": "No shadow. Accent left border using primary color or success/danger color."
+    }
+  },
+  "pages": {
+    "MarketplaceHome": {
+      "path": "/",
+      "structure": [
+        "Hero (full bleed, search bar anchored at bottom)",
+        "Fast Categories (Tab pill group)",
+        "Top Providers Grid (Provider cards)",
+        "How It Works (Process steps)",
+        "Tier Comparison (Online / Outcall / Tow)",
+        "Before/After Gallery",
+        "Testimonials / Reviews",
+        "FAQ Accordion"
+      ]
+    },
+    "SearchPage": {
+      "path": "/search",
+      "structure": [
+        "Header",
+        "Search Container (Top bar with Inputs + Filter chip group)",
+        "Results Grid (Provider Cards list/grid toggle)",
+        "Pagination"
+      ]
+    },
+    "ProviderPage": {
+      "path": "/provider/:slug",
+      "structure": [
+        "Hero Header (Provider Image, Name, Rating)",
+        "Main 2-col layout: Left (Specs, Services, About, Reviews), Right (Sticky Booking CTA Card)"
+      ]
+    },
+    "BookingDetailPage": {
+      "path": "/booking/:id",
+      "structure": [
+        "Header",
+        "Centered single column: Live Timeline (Vertical process steps)",
+        "Booking Summary Panel"
+      ]
+    },
+    "Auth": {
+      "paths": ["/login", "/register"],
+      "structure": [
+        "Centered Layout",
+        "Logo",
+        "Auth Form (Inputs + Button) in a flat panel (border, no shadow, #0d0d0d bg)"
+      ]
+    }
+  },
+  "gaps_to_close": [
+    "REMOVE all box-shadows globally (shadow-sm, shadow-md, shadow-lg, etc.). Use border border-[#2E2E2E] for depth.",
+    "REPLACE existing fonts with Bebas Neue (Display) and IBM Plex Sans (Body). Update tailwind.config.js.",
+    "ENFORCE background colors strictly: root `#000000`, surfaces `#0d0d0d`, `#141414`, `#1a1a1a`.",
+    "UPDATE border radius: remove all rounded-xl or rounded-2xl if they apply to bottoms. Use rounded-t-xl rounded-b-none for cards.",
+    "UPDATE Modals to use Radix UI patterns if applicable, but style with #0d0d0d bg, 1px border, 0px shadow.",
+    "UPDATE Accent color to exact hex #FFB020.",
+    "IMPLEMENT bracket decorators `[ label ]` and slash decorators `/ label /` on section headings and metadata."
+  ],
+  "images": {
+    "hero_backgrounds": [
+      {
+        "url": "https://images.pexels.com/photos/4488665/pexels-photo-4488665.jpeg",
+        "description": "Neon lit dark garage with mechanic, suitable for main hero background"
+      },
+      {
+        "url": "https://images.pexels.com/photos/4488640/pexels-photo-4488640.jpeg",
+        "description": "Silhouette of a mechanic in dark garage"
+      }
+    ],
+    "before_after": [
+      {
+        "url": "https://images.pexels.com/photos/8869260/pexels-photo-8869260.jpeg",
+        "description": "Broken car engine on road (Before)"
+      },
+      {
+        "url": "https://images.pexels.com/photos/7564871/pexels-photo-7564871.jpeg",
+        "description": "Mechanic fixing engine with tools (After)"
+      }
+    ],
+    "testimonials": [
+      {
+        "url": "https://images.unsplash.com/photo-1636761358760-663c29f00352",
+        "description": "Mechanic working in garage for testimonial or process section backgrounds"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "All files are in .js (React JS, not TSX). Do not use TypeScript syntax.",
+    "Add 'data-testid' to all interactive elements (buttons, inputs, modaltoggles, links).",
+    "Replace old UI components. Implement strictly according to the 'gaps_to_close'.",
+    "Do not use native select; implement custom select/dropdown with #1a1a1a bg and amber chevron.",
+    "Tabs should be segmented pills on a black background. Active tab must be #FFB020.",
+    "To use Bebas Neue and IBM Plex Sans, add them to index.css via Google Fonts import: @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&display=swap');",
+    "Tailwind config update: add { fontFamily: { display: ['Bebas Neue', 'sans-serif'], body: ['IBM Plex Sans', 'sans-serif'] }, colors: { primary: '#FFB020', background: '#000000', border: '#2E2E2E' } }"
+  ]
+}
