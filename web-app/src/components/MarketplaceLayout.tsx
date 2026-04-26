@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 import { Search, Bell, LogOut, Menu, X, MapPin, Heart, Briefcase, Inbox, DollarSign, TrendingUp, Car, FileText } from 'lucide-react';
 import { useState, useEffect, ReactNode } from 'react';
 import { notificationsAPI } from '../services/api';
+import QuickRequestFloating from './QuickRequestFloating';
 
 /**
  * Sprint 14 — Light AppShell
@@ -160,6 +161,9 @@ export default function MarketplaceLayout() {
       <main>
         <Outlet />
       </main>
+
+      {/* ── Quick Request — sticky FAB on every page ───────── */}
+      <QuickRequestFloating />
 
       {/* ─── FOOTER ─────────────────────────────────────────────── */}
       <footer className="border-t border-[var(--border)] bg-white mt-16">

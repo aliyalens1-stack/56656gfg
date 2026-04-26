@@ -2094,6 +2094,158 @@ async def marketplace_stats():
         ],
     }
 
+# --- Disputes list compat: /api/disputes → NestJS /disputes/my ---
+# Sprint 14: closes G-1. Mobile/web-app contract uses /disputes; NestJS exposes /disputes/my only.
+@app.get("/api/disputes")
+async def compat_disputes_list(request: Request):
+    return await _proxy_to(request, "disputes/my")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 🔥 SPRINT 14.5 — QUICK REQUEST CORE (Problem → Solution)
+# ═══════════════════════════════════════════════════════════════════
+# Ядро продукта. Свободный текст → классификация → лучшие 3-5 мастеров
+# с matchScore, ETA, ценой, рекомендованным id. Открыто без auth.
+
+PROBLEM_KEYWORDS = {
+    "engine_start_failure": ["start", "won't", "не завод", "не зав", "стартер", "starter", "wont start", "won't start", "springt nicht"],
+    "battery":               ["battery", "акумул", "аккумул", "разряж", "разрядил", "сел", "batterie", "leer"],
+    "tow":                   ["tow", "эвакуатор", "abschlepp"],
+    "tires":                 ["tire", "tyre", "шин", "колес", "прокол", "puncture", "reifen"],
+    "brakes":                ["brake", "тормоз", "тормоза", "колодк", "bremse"],
+    "oil":                   ["oil", "масло", "öl"],
+    "diagnostics":           ["diag", "диагност", "ошибка", "ошибки", "check engine", "code", "lamp", "лампа", "kontroll"],
+    "electrical":            ["electric", "электр", "проводк", "wiring", "elektr", "генератор"],
+    "suspension":            ["suspension", "подвеск", "стойк", "амортиз", "fahrwerk", "stoßdämpfer"],
+    "noise":                 ["noise", "шум", "стук", "стучит", "geräusch", "klopf"],
+    "ac":                    ["air cond", "ac ", "кондицион", "klima"],
+}
+
+PROBLEM_TO_SLUGS = {
+    "engine_start_failure": ["starter", "battery", "diagnostics", "electrical"],
+    "battery":               ["battery", "electrical"],
+    "tow":                   ["tow", "evacuation"],
+    "tires":                 ["tires", "wheels"],
+    "brakes":                ["brakes"],
+    "oil":                   ["oil-change"],
+    "diagnostics":           ["diagnostics"],
+    "electrical":            ["electrical"],
+    "suspension":            ["suspension"],
+    "noise":                 ["diagnostics", "engine"],
+    "ac":                    ["ac", "climate"],
+    "general":               ["diagnostics"],
+}
+
+PROBLEM_LABELS = {
+    "engine_start_failure": "Engine won't start",
+    "battery":               "Battery / charging",
+    "tow":                   "Tow truck",
+    "tires":                 "Tires & wheels",
+    "brakes":                "Brake system",
+    "oil":                   "Oil change",
+    "diagnostics":           "Diagnostics",
+    "electrical":            "Electrical / wiring",
+    "suspension":            "Suspension",
+    "noise":                 "Engine noise",
+    "ac":                    "Air conditioning",
+    "general":               "General check",
+}
+
+
+def classify_problem(text: str) -> str:
+    """Cheap rule-based classifier. Returns a problem key or 'general'."""
+    if not text:
+        return "general"
+    t = text.lower()
+    best, hits = "general", 0
+    for key, words in PROBLEM_KEYWORDS.items():
+        c = sum(1 for w in words if w in t)
+        if c > hits:
+            best, hits = key, c
+    return best
+
+
+@app.post("/api/quick-request/resolve")
+async def quick_request_resolve(request: Request):
+    """🔥 Core product endpoint — Problem → Solution.
+
+    Request : { text: str, location?: { lat, lng } }
+    Response: { problemType, problemLabel, solutions[], recommended }
+
+    No auth: anyone can hit this. Used by sticky FAB across the whole web-app.
+    """
+    body = await request.json()
+    text = (body.get("text") or "").strip()
+    loc = body.get("location") or {}
+    lat = float(loc.get("lat", 50.4501))
+    lng = float(loc.get("lng", 30.5234))
+
+    problem_key = classify_problem(text)
+    needed_slugs = PROBLEM_TO_SLUGS.get(problem_key, ["diagnostics"])
+
+    orgs = await db.organizations.find(
+        {"status": "active", "isOnline": True},
+        {"_id": 0, "ownerId": 0},
+    ).to_list(50)
+    if not orgs:
+        orgs = await db.organizations.find({"status": "active"}, {"_id": 0, "ownerId": 0}).to_list(50)
+
+    solutions = []
+    for o in orgs:
+        coords = o.get("location", {}).get("coordinates", [30.52, 50.45])
+        dist = round(haversine(lat, lng, coords[1], coords[0]), 1)
+        eta = max(3, int(dist * 4 + random.uniform(-2, 3)))
+        rating = float(o.get("ratingAvg", 4.0))
+        rsp = float(o.get("avgResponseTimeMinutes", 15))
+        is_online = bool(o.get("isOnline"))
+
+        tags_lc = " ".join([str(t).lower() for t in (o.get("badges") or [])] + [str(t).lower() for t in (o.get("tags") or [])])
+        fit = 1.0 if any(s in tags_lc for s in needed_slugs) else 0.7
+
+        dist_s = max(0, min(1, 1 - dist / 10))
+        rat_s = max(0, min(1, rating / 5))
+        rsp_s = max(0, min(1, 1 - rsp / 30))
+        avl_s = 1 if is_online else 0.3
+        score = round(
+            (dist_s * 0.35 + rat_s * 0.25 + rsp_s * 0.15 + avl_s * 0.10) * fit + 0.15 * fit,
+            4,
+        )
+
+        solutions.append({
+            "providerId":   o.get("slug") or o.get("id"),
+            "slug":         o.get("slug"),
+            "name":         o.get("name"),
+            "rating":       round(rating, 1),
+            "reviewsCount": int(o.get("reviewsCount", 0)),
+            "eta":          eta,
+            "etaText":      f"{eta} min",
+            "distance":     dist,
+            "distanceText": f"{dist} km",
+            "priceFrom":    int(o.get("priceFrom") or 350),
+            "isOnline":     is_online,
+            "matchScore":   score,
+            "badges":       (o.get("badges") or [])[:4],
+            "warranty":     o.get("warranty") or "1 year",
+            "vatIncluded":  True,
+        })
+
+    solutions.sort(key=lambda s: -s["matchScore"])
+    top = solutions[:5]
+
+    return {
+        "problemType":     problem_key,
+        "problemLabel":    PROBLEM_LABELS.get(problem_key, "General check"),
+        "matchedCount":    len(solutions),
+        "solutions":       top,
+        "recommended":     top[0]["providerId"] if top else None,
+        "recommendedSlug": top[0]["slug"] if top else None,
+        "echoText":        text[:140],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Marketplace quick-request (legacy, kept for backward compatibility)
+# ═══════════════════════════════════════════════════════════════════
 @app.post("/api/marketplace/quick-request")
 async def marketplace_quick_request(request: Request):
     """Quick request - find best provider.
@@ -6297,17 +6449,6 @@ async def compat_garage_get(vehicle_id: str, request: Request):
 @app.get("/api/payments/list")
 async def compat_payments_list(request: Request):
     return await _proxy_to(request, "payments/my")
-
-
-# --- Disputes list compat: /api/disputes → NestJS /disputes/my ---
-# Sprint 14: closes G-1. Mobile/web-app contract uses /disputes; NestJS exposes /disputes/my only.
-@app.get("/api/disputes")
-async def compat_disputes_list(request: Request):
-    return await _proxy_to(request, "disputes/my")
-
-# Sprint 14: removed broken compat `slots/reserve → slots/hold` (G-2 / B-1).
-# NestJS exposes POST /api/slots/reserve directly via slots.controller.ts (@Post('slots/reserve')).
-# The catch-all proxy forwards POST /api/slots/reserve untouched.
 
 
 # --- Auth forgot-password (mock-safe) ---
