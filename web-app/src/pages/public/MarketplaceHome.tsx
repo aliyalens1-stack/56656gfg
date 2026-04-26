@@ -1,234 +1,233 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import {
-  Search, MapPin, Star, Zap, Clock, ArrowRight, AlertTriangle, Phone, Wrench, ShieldCheck,
-  BatteryCharging, Car, ChevronRight, TrendingUp, Activity,
-} from 'lucide-react';
-import QuickRequestModal from '../../components/QuickRequestModal';
-import BookingModal from '../../components/BookingModal';
+import { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Search, MapPin, Star, ShieldCheck, Clock, Wrench, Zap, ArrowRight } from 'lucide-react';
 import { marketplaceAPI } from '../../services/api';
-import { useAuthStore } from '../../stores/authStore';
-import { useRealtimeEvents } from '../../hooks/useRealtimeSocket';
+import { ProviderCard } from '../../components/marketplace/ProviderCard';
 
-const PROBLEMS = [
-  { id: 'wont-start',  label: 'Не заводится', icon: AlertTriangle },
-  { id: 'tow',         label: 'Эвакуатор',    icon: Phone },
-  { id: 'diagnostics', label: 'Диагностика',  icon: Search },
-  { id: 'oil',         label: 'Замена масла', icon: Wrench },
-  { id: 'brakes',      label: 'Тормоза',      icon: ShieldCheck },
-  { id: 'electric',    label: 'Электрика',    icon: Zap },
-  { id: 'battery',     label: 'Прикурить',    icon: BatteryCharging },
-  { id: 'suspension',  label: 'Подвеска',     icon: Car },
+/**
+ * Sprint 14 — Light MarketplaceHome
+ * Hero search + problem chips, live stats panel, recommended providers grid.
+ * No dark sections in primary flow. Yellow used only as CTA on Search button.
+ */
+
+const PROBLEM_CHIPS: Array<{ key: string; label: string }> = [
+  { key: 'engine_wont_start', label: "Won't start" },
+  { key: 'urgent',            label: 'Tow truck' },
+  { key: 'diagnostics',       label: 'Diagnostics' },
+  { key: 'oil_change',        label: 'Oil change' },
+  { key: 'brakes',             label: 'Brakes' },
+  { key: 'electrical',        label: 'Electric' },
+  { key: 'suspension',        label: 'Suspension' },
 ];
 
 export default function MarketplaceHome() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const [quickOpen, setQuickOpen] = useState(false);
-  const [bookingOpen, setBookingOpen] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<any>(null);
   const [providers, setProviders] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [q, setQ] = useState('');
+  const [city, setCity] = useState('Berlin');
 
-  const fetchData = useCallback(async () => {
+  useEffect(() => { load(); }, []);
+
+  async function load() {
     try {
-      const [pr, st] = await Promise.all([marketplaceAPI.getProviders(), marketplaceAPI.getStats()]);
-      setProviders(pr.data.providers || []);
-      setStats(st.data);
-    } catch (e) { console.error(e); }
-  }, []);
+      const [providersRes, statsRes] = await Promise.all([
+        marketplaceAPI.getProviders(),
+        marketplaceAPI.getStats(),
+      ]);
+      const list = providersRes.data?.providers ?? providersRes.data ?? [];
+      setProviders(Array.isArray(list) ? list : []);
+      setStats(statsRes.data);
+    } catch (e) {
+      console.error('home load failed', e);
+    }
+  }
 
-  useEffect(() => { fetchData(); const t = setInterval(fetchData, 30000); return () => clearInterval(t); }, [fetchData]);
-  useRealtimeEvents(['zone:updated', 'provider:online'], () => fetchData());
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (city) params.set('city', city);
+    navigate(`/search?${params.toString()}`);
+  };
 
-  const onBook = (p: any) => { setSelectedProvider(p); setBookingOpen(true); };
-  const submitSearch = (e: React.FormEvent) => { e.preventDefault(); navigate(`/search${q ? `?q=${encodeURIComponent(q)}` : ''}`); };
-
-  const providersOnline = stats?.providersNearby ?? providers.length ?? 0;
-  const avgEta = stats?.avgEta ?? 8;
-  const avgRating = stats?.avgRating ?? 4.8;
-  const demandLevel = stats?.demandLevel || 'высокий';
+  const onChip = (problem: string) => {
+    navigate(`/search?problem=${problem}`);
+  };
 
   return (
-    <div className="bg-ink-0 text-white">
-      {/* ============ HERO: SEARCH + STATS + CHIPS ============ */}
-      <section className="max-w-[1600px] mx-auto px-4 lg:px-8 pt-8 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-          {/* Left: search + chips */}
-          <div className="card-elevated">
-            <div className="slash-label mb-3">{user ? `ПРИВЕТ, ${(user.firstName || user.email || '').toUpperCase()}` : 'НАЙТИ МАСТЕРА'}</div>
-            <h1 className="font-display tracking-bebas text-[40px] md:text-[56px] leading-[1] mb-6">
-              ЧТО СЛУЧИЛОСЬ <span className="text-amber">С МАШИНОЙ?</span>
+    <div data-testid="marketplace-home">
+      {/* ── Hero Search ───────────────────────────────────────────── */}
+      <section className="mx-auto max-w-7xl px-4 md:px-6 pt-10 pb-12">
+        <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+          <div>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary-h)]" data-testid="home-eyebrow">
+              Auto service marketplace
+            </p>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--text)] max-w-3xl" data-testid="home-title">
+              Find a mechanic near you.
             </h1>
+            <p className="mt-4 max-w-2xl text-lg text-[var(--text-2)]" data-testid="home-subtitle">
+              Compare workshops, mobile mechanics, ETA, rating and price.
+            </p>
 
-            <form onSubmit={submitSearch} className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 mb-5" data-testid="home-search-form">
-              <div className="input-shell input-lg">
-                <Search size={18} className="text-amber" />
-                <input
-                  value={q}
-                  onChange={e => setQ(e.target.value)}
-                  type="text"
-                  placeholder="Услуга, СТО или проблема (напр. диагностика)"
-                  data-testid="home-search-input"
-                />
-                <span className="hidden md:flex items-center gap-1 pl-3 text-2xs uppercase tracking-widest" style={{ color: '#8A8A8A', borderLeft: '1px solid #2E2E2E', paddingLeft: 12 }}>
-                  <MapPin size={12} className="text-amber" /> Киев
-                </span>
+            {/* Search box */}
+            <form onSubmit={submitSearch} className="mt-7 rounded-2xl border border-[var(--border)] bg-white p-3 md:p-4 shadow-[var(--shadow-card)]" data-testid="home-search-form">
+              <div className="flex flex-col md:flex-row gap-2 md:gap-3">
+                <div className="flex-1 input-shell input-lg">
+                  <Search size={18} className="text-[var(--text-soft)]" />
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="What happened? Engine, brakes, diagnostics…"
+                    data-testid="home-search-q"
+                  />
+                </div>
+                <div className="md:w-48 input-shell input-lg">
+                  <MapPin size={18} className="text-[var(--text-soft)]" />
+                  <input
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="City"
+                    data-testid="home-search-city"
+                  />
+                </div>
+                <button type="submit" className="btn-primary btn-lg md:w-auto" data-testid="home-search-submit">
+                  <Search size={16} /> Search
+                </button>
               </div>
-              <button type="submit" className="btn-primary btn-lg" data-testid="home-search-submit">
-                ПОИСК <ArrowRight size={16} />
-              </button>
+
+              <div className="mt-4 flex flex-wrap gap-2" data-testid="home-problem-chips">
+                {PROBLEM_CHIPS.map((c) => (
+                  <button
+                    type="button"
+                    key={c.key}
+                    onClick={() => onChip(c.key)}
+                    className="chip"
+                    data-testid={`home-chip-${c.key}`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
             </form>
 
-            <div className="slash-label mb-3">ЧАСТЫЕ ПРОБЛЕМЫ</div>
-            <div className="flex flex-wrap gap-2" data-testid="problem-chips">
-              {PROBLEMS.map(p => {
-                const Icon = p.icon;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setQuickOpen(true)}
-                    className="chip"
-                    data-testid={`problem-${p.id}`}
-                  >
-                    <Icon size={14} className="text-amber" /> {p.label}
-                  </button>
-                );
-              })}
+            {/* Trust strip */}
+            <div className="mt-6 flex flex-wrap items-center gap-6 text-sm text-[var(--text-2)]" data-testid="home-trust-strip">
+              <span className="inline-flex items-center gap-2"><ShieldCheck size={16} className="text-[var(--success)]" /> Verified workshops</span>
+              <span className="inline-flex items-center gap-2"><Clock size={16} className="text-[var(--warning)]" /> Live ETA</span>
+              <span className="inline-flex items-center gap-2"><Star size={16} className="text-[var(--primary)] fill-[var(--primary)]" /> Real reviews</span>
             </div>
           </div>
 
-          {/* Right: live stats + quick action */}
-          <div className="card-elevated flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <span className="slash-label">LIVE СТАТУС</span>
-              <span className="flex items-center gap-1.5 text-2xs uppercase tracking-widest text-amber font-bold">
-                <span className="live-dot" /> ONLINE
+          {/* ── Live Stats Panel ─────────────────────────── */}
+          <aside className="rounded-2xl border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-card)]" data-testid="home-live-stats">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="live-dot" />
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-2)]">
+                Live in your area
               </span>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
-              <StatTile label="Мастеров онлайн" value={`${providersOnline}+`} icon={Activity} />
-              <StatTile label="Среднее ETA"     value={`${avgEta} мин`}     icon={Clock} />
-              <StatTile label="Рейтинг"         value={`${avgRating}★`}     icon={Star} />
-              <StatTile label="Спрос"           value={demandLevel}        icon={TrendingUp} />
+              <Stat label="Providers online" value={stats?.onlineProviders ?? '—'} />
+              <Stat label="Avg ETA" value={stats?.avgEta ? `${stats.avgEta} min` : '—'} />
+              <Stat label="Avg rating" value={stats?.avgRating ? Number(stats.avgRating).toFixed(1) : '—'} />
+              <Stat label="Today bookings" value={stats?.todayBookings ?? '—'} />
             </div>
 
-            <button onClick={() => setQuickOpen(true)} className="btn-primary btn-lg w-full" data-testid="home-quick-cta">
-              <Zap size={16} fill="currentColor" /> БЫСТРЫЙ ЗАПРОС
+            {Array.isArray(stats?.recentEvents) && stats.recentEvents.length > 0 && (
+              <div className="mt-5 border-t border-[var(--border)] pt-4">
+                <div className="text-[11px] uppercase tracking-[0.16em] font-bold text-[var(--text-soft)] mb-2">Recent activity</div>
+                <ul className="space-y-2 text-sm">
+                  {stats.recentEvents.slice(0, 3).map((ev: any, i: number) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className={`mt-1 h-2 w-2 rounded-full shrink-0 ${ev.type === 'accept' ? 'bg-[var(--success)]' : ev.type === 'online' ? 'bg-[var(--primary)]' : 'bg-[var(--text-soft)]'}`} />
+                      <div>
+                        <div className="text-[var(--text)]">{ev.text}</div>
+                        <div className="text-xs text-[var(--text-soft)]">{ev.time}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <button onClick={() => navigate('/search?urgent=1')} className="btn-dark w-full mt-5" data-testid="home-quick-request">
+              <Zap size={16} /> Quick request
             </button>
-            <Link to="/search?view=map" className="btn-secondary w-full" data-testid="home-map-cta">
-              <MapPin size={14} /> ПОСМОТРЕТЬ КАРТУ
-            </Link>
-          </div>
+          </aside>
         </div>
       </section>
 
-      {/* ============ RECOMMENDED NEARBY ============ */}
-      <section className="max-w-[1600px] mx-auto px-4 lg:px-8 py-6" data-testid="recommended-section">
-        <div className="flex items-end justify-between mb-5">
+      {/* ── Recommended Providers ─────────────────────────────── */}
+      <section className="mx-auto max-w-7xl px-4 md:px-6 pb-16" data-testid="home-recommended">
+        <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <div className="slash-label mb-2">РЕКОМЕНДОВАНО</div>
-            <h2 className="font-display tracking-bebas text-3xl md:text-4xl">МАСТЕРА РЯДОМ</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary-h)]">Recommended</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold mt-1">Mechanics nearby</h2>
           </div>
-          <Link to="/search" className="btn-ghost" data-testid="see-all">ВСЕ <ChevronRight size={14} /></Link>
+          <Link to="/search" className="text-sm font-bold inline-flex items-center gap-1 hover:text-[var(--primary-h)]" data-testid="home-view-all">
+            View all <ArrowRight size={14} />
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="recommended-grid">
-          {providers.slice(0, 6).map(p => <ProviderCard key={p.id} p={p} onBook={() => onBook(p)} />)}
-          {providers.length === 0 && (
-            <div className="card text-center py-12 col-span-full" style={{ color: '#8A8A8A' }}>
-              Загрузка мастеров…
-            </div>
-          )}
-        </div>
+        {providers.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="grid gap-4">
+            {providers.slice(0, 6).map((p) => (
+              <ProviderCard key={p.id || p._id || p.slug} provider={p} />
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* ============ QUICK CATEGORIES ============ */}
-      <section className="max-w-[1600px] mx-auto px-4 lg:px-8 py-6" data-testid="categories-section">
-        <div className="flex items-end justify-between mb-5">
-          <div>
-            <div className="slash-label mb-2">КАТЕГОРИИ</div>
-            <h2 className="font-display tracking-bebas text-3xl md:text-4xl">ПО ТИПУ УСЛУГИ</h2>
-          </div>
+      {/* ── How it works (compact, light) ────────────────────── */}
+      <section className="mx-auto max-w-7xl px-4 md:px-6 pb-20" data-testid="home-how-it-works">
+        <div className="mb-6">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary-h)]">How it works</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold mt-1">Three steps to a fixed car</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          {PROBLEMS.map(p => {
-            const Icon = p.icon;
-            return (
-              <Link
-                to={`/search?q=${encodeURIComponent(p.label)}`}
-                key={p.id}
-                className="card-interactive flex flex-col items-center justify-center gap-2 !p-4 aspect-square"
-                data-testid={`cat-${p.id}`}
-              >
-                <span className="icon-badge-soft"><Icon size={18} /></span>
-                <span className="text-xs font-semibold text-center">{p.label}</span>
-              </Link>
-            );
-          })}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Step n={1} title="Describe the problem" text="Pick a category or type a few words. We match available mechanics in your zone." icon={<Wrench size={18} />} />
+          <Step n={2} title="Compare offers" text="See ETA, rating, price and reviews. Pick the one you trust." icon={<Star size={18} />} />
+          <Step n={3} title="Book and track" text="Confirm a slot, watch the mechanic on the map, pay only when work is done." icon={<MapPin size={18} />} />
         </div>
       </section>
-
-      <QuickRequestModal isOpen={quickOpen} onClose={() => setQuickOpen(false)} />
-      <BookingModal isOpen={bookingOpen} onClose={() => setBookingOpen(false)} provider={selectedProvider} />
     </div>
   );
 }
 
-function StatTile({ label, value, icon: Icon }: { label: string; value: string; icon: any }) {
+function Stat({ label, value }: { label: string; value: any }) {
   return (
-    <div className="surface-chip !p-3 flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <span className="text-2xs uppercase tracking-widest" style={{ color: '#8A8A8A' }}>{label}</span>
-        <Icon size={12} className="text-amber" />
-      </div>
-      <span className="font-display tracking-bebas text-2xl text-amber">{value}</span>
+    <div className="rounded-xl bg-[var(--surface-soft)] border border-[var(--border)] p-3.5">
+      <div className="text-2xl font-extrabold text-[var(--text)]">{value}</div>
+      <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-soft)]">{label}</div>
     </div>
   );
 }
 
-function ProviderCard({ p, onBook }: { p: any; onBook: () => void }) {
-  const status = p.status === 'closed' ? 'Закрыто' : p.status === 'busy' ? 'Скоро занят' : 'Открыт';
+function Step({ n, title, text, icon }: { n: number; title: string; text: string; icon: React.ReactNode }) {
   return (
-    <div className="provider-card flex flex-col p-5 gap-4" data-testid={`provider-card-${p.id}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <Link to={`/provider/${p.slug || p.id}`} className="block">
-            <h3 className="font-display tracking-bebas text-xl hover:text-amber transition-colors">{p.name}</h3>
-          </Link>
-          <p className="text-xs mt-0.5" style={{ color: '#8A8A8A' }}>{p.spec || p.services?.slice(0, 2).join(', ') || 'Универсал'}</p>
+    <div className="rounded-2xl border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-card)]">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="h-10 w-10 rounded-xl bg-[var(--primary-soft)] text-[var(--primary-p)] inline-flex items-center justify-center font-extrabold">
+          {n}
         </div>
-        <span className={`badge ${p.status === 'open' || !p.status ? '' : 'badge-muted'}`}>{status}</span>
+        <div className="text-[var(--text-2)]">{icon}</div>
       </div>
+      <h3 className="text-lg font-extrabold mb-1">{title}</h3>
+      <p className="text-sm text-[var(--text-2)]">{text}</p>
+    </div>
+  );
+}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs" style={{ color: '#B8B8B8' }}>
-        <span className="flex items-center gap-1"><Star size={12} className="text-amber" fill="currentColor" />{p.ratingAvg ?? '—'} <span style={{ color: '#8A8A8A' }}>({p.reviewsCount ?? 0})</span></span>
-        <span className="flex items-center gap-1"><MapPin size={12} className="text-amber" />{p.distanceKm ?? '—'} км</span>
-        <span className="flex items-center gap-1"><Clock size={12} className="text-amber" />{p.etaMinutes ?? '—'} мин</span>
-      </div>
-
-      <div className="flex flex-wrap gap-1">
-        {(p.trustBadges || []).slice(0, 3).map((b: string, i: number) => (
-          <span key={i} className="badge badge-muted">{b.toUpperCase()}</span>
-        ))}
-      </div>
-
-      <div className="hairline-t pt-3 flex items-center justify-between mt-auto">
-        <div>
-          <div className="text-2xs uppercase tracking-widest" style={{ color: '#8A8A8A' }}>от</div>
-          <div className="font-display tracking-bebas text-2xl text-amber leading-none">{p.priceFrom ?? 500} ₴</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onBook} className="btn-primary btn-sm" data-testid={`book-${p.id}`}>
-            Записаться
-          </button>
-          <Link to={`/provider/${p.slug || p.id}`} className="btn-secondary btn-sm" data-testid={`detail-${p.id}`}>
-            Профиль
-          </Link>
-        </div>
-      </div>
+function EmptyState() {
+  return (
+    <div className="rounded-2xl border border-dashed border-[var(--border-strong)] bg-white p-10 text-center" data-testid="home-empty">
+      <Wrench size={28} className="mx-auto text-[var(--text-soft)] mb-3" />
+      <div className="font-bold mb-1">No providers in your area yet</div>
+      <p className="text-sm text-[var(--text-2)] max-w-md mx-auto">We're onboarding new workshops every week. Try changing the city or check back later.</p>
     </div>
   );
 }
